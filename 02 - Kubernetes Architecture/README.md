@@ -2,18 +2,18 @@
 
 ## 1. Introduction
 
-In Day 30, we learned why Kubernetes is needed and how it solves the problems of managing containers at scale.
+In this concept I learned why Kubernetes is needed and how it solves the problems of managing containers at scale.
 
-In this class, we explored the internal architecture of Kubernetes and understood how its different components work together.
+In this class, I explored the internal architecture of Kubernetes and understood how its different components work together.
 
-Before learning the architecture, let's recall the four major advantages of Kubernetes:
+Before learning the architecture, let's recall the four major advantages of Kubernetes :
 
 1. Cluster Architecture
 2. Auto Healing
 3. Auto Scaling
 4. Enterprise-Level Capabilities
 
-To understand how Kubernetes provides these capabilities, we need to understand its architecture.
+To understand how Kubernetes provides these capabilities, I need to understand its architecture.
 
 ## 2. Kubernetes Architecture Overview
 
