@@ -1,2 +1,5 @@
-# My-Favorite-Kubernetes-Journey
-My Favorite Kubernetes Journey ☸️  Documenting my journey of learning Kubernetes from basics to advanced concepts through hands-on practice, real-world projects, and practical notes. Exploring container orchestration, Pods, Deployments, Services, Ingress, scaling, monitoring and more.  Learn • Practice • Build • Document
+# My Favorite Kubernetes Journey
+
+Among all the technologies I'm learning in my DevOps journey, Kubernetes has become my absolute favorite. This repository is where I document my journey of exploring Kubernetes from core concepts to advanced topics, through hands-on labs, real-world projects, practical implementations and detailed notes.
+
+Learning how container orchestration works in real-world environments and building the skills to become a better Cloud & DevOps Engineer.
