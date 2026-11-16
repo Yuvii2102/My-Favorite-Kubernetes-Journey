@@ -1,4 +1,4 @@
-# Understanding Kubernetes Deployments
+# Understanding Kubernetes Deployments & ReplicaSet
 
 ## 1. Introduction
 
