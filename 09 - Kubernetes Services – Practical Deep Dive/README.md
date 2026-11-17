@@ -1,119 +1,257 @@
-# Kubernetes Services – Practical Deep Dive
+# Project: Kubernetes Services – Service Discovery, Load Balancing and Application Exposure
 
-## 1. Introduction
+## 1. Goal of the Practical
 
-In this lesson, I explored Kubernetes Services in more detail and understood how they work in a real Kubernetes environment.
+The goal of this practical was to understand how Kubernetes Services work and how they help applications communicate inside and outside a Kubernetes cluster.
 
-In the previous lesson, I learned that Kubernetes Services provide three important capabilities:
+I used a Python Django sample application and deployed it inside my Minikube cluster.
 
-1. Service Discovery
-2. Load Balancing
-3. Exposing applications outside the cluster
+Through this practical, I demonstrated three important capabilities of Kubernetes Services:
 
-The main goal of this practical was to understand how Services communicate with Pods and how traffic reaches applications inside and outside a Kubernetes cluster.
+1. **Service Discovery:** Finding application Pods using labels and selectors.
+2. **Load Balancing:** Distributing incoming requests between multiple Pods.
+3. **Application Exposure:** Exposing applications using NodePort and understanding LoadBalancer.
 
-## 2. Understanding the Application Architecture
+I also used Kubeshark to monitor network traffic and understand how requests travel between Kubernetes components.
 
-For this practical, I used a Python Django sample application.
+## 2. Tools and Technologies Used
 
-The application was deployed inside Kubernetes using a Deployment.
+| Tool | Purpose |
+|---|---|
+| AWS EC2 | Linux environment |
+| Ubuntu | Operating system |
+| Minikube | Kubernetes cluster |
+| kubectl | Managing Kubernetes resources |
+| Docker | Building application images |
+| Python Django | Sample application |
+| Kubernetes Deployment | Managing application replicas |
+| Kubernetes Service | Service Discovery and traffic routing |
+| Kubeshark | Monitoring Kubernetes network traffic |
+| Git and GitHub | Getting application source code |
 
-The Deployment creates a ReplicaSet, and the ReplicaSet manages the required number of Pods.
-
-The application used port `8000` and the context path `/demo`.
-
-### Application flow
+## 3. Architecture
 
 ```text
-Kubernetes Deployment
-        |
-        v
-    ReplicaSet
-        |
-        v
-   Two NGINX? No
-   Python Django Pods
-        |
-        v
-  Kubernetes Service
-        |
-        v
-  Application Access
+                 Client / EC2 Terminal
+                         |
+                    HTTP Request
+                         |
+                         v
+                NodePort Service
+                    Port 30007
+                         |
+                         v
+                 Kubernetes Service
+                     Port 80
+                         |
+               ---------------------
+               |                   |
+               v                   v
+          Python Pod 1        Python Pod 2
+           Port 8000           Port 8000
+               |                   |
+               ---------------------
+
+                 Kubeshark
+          Network Traffic Monitoring
 ```
 
-The application used in this lesson was a Python Django application, not NGINX.
+---
 
-## 3. Preparing the Application
+# Phase 1: Prepare the Environment
 
-The first step was to prepare the application and build its Docker image.
+## Step 1: Connect to the EC2 Instance
 
-The instructor used the Docker repository `Docker-0-to-0` containing sample Python and Golang applications.
+I connected to my AWS EC2 instance using SSH through MobaXterm.
 
-The Python application was selected for this demonstration.
-
-### Step 1: Build the Docker image
-
-The Docker image was created using the Dockerfile.
-
-Example command:
+Check the current directory:
 
 ```bash
-docker build -t python-sample-application-demo:v1 .
+pwd
 ```
 
-Here:
+## Step 2: Check Minikube Status
 
-- `docker build` builds a Docker image.
-- `-t` assigns a name and tag to the image.
-- `python-sample-application-demo` is the image name.
-- `v1` is the image version.
-- `.` specifies the current directory as the build context.
+```bash
+minikube status
+```
 
-## 4. Creating the Kubernetes Deployment
+The cluster should be running.
 
-After building the Docker image, the next step was to deploy the application inside Kubernetes.
+If it is stopped:
 
-A Deployment YAML file was created.
+```bash
+minikube start
+```
 
-The instructor used two replicas to demonstrate how Kubernetes Services distribute traffic between multiple Pods.
+## Step 3: Verify Kubernetes Nodes
 
-### Deployment configuration
+```bash
+kubectl get nodes -o wide
+```
+
+The Minikube node should show `Ready`.
+
+## Step 4: Check Existing Resources
+
+```bash
+kubectl get all
+```
+
+I checked the existing resources and removed only old application resources that were no longer required.
+
+```bash
+kubectl delete deployment <old-deployment-name>
+kubectl delete service <old-service-name>
+```
+
+I did not delete the default Kubernetes Service or my Kubeshark resources.
+
+---
+
+# Phase 2: Download the Python Django Application
+
+## Step 5: Clone the GitHub Repository
+
+I used Abhishek Veeramalla's Docker Zero to Hero repository.
+
+GitHub Repository:
+
+https://github.com/iam-veeramalla/Docker-Zero-to-Hero
+
+Clone the repository:
+
+```bash
+git clone https://github.com/iam-veeramalla/Docker-Zero-to-Hero.git
+```
+
+Move into the Python application directory:
+
+```bash
+cd Docker-Zero-to-Hero/examples/python-web-app
+```
+
+Check the files:
+
+```bash
+ls
+```
+
+The directory contains the Python application source code, Dockerfile and requirements file.
+
+## Step 6: Understand the Dockerfile
+
+```bash
+cat Dockerfile
+```
+
+I checked the Dockerfile to understand how the application image is built and which port the application uses.
+
+The Django application runs on port `8000` and its application endpoint is `/demo/`.
+
+## Step 7: Build the Docker Image
+
+```bash
+docker build -t python-sample-app:v1 .
+```
+
+Check the image:
+
+```bash
+docker images
+```
+
+Load the image into Minikube:
+
+```bash
+minikube image load python-sample-app:v1
+```
+
+Verify:
+
+```bash
+minikube image ls
+```
+
+**Why did I do this?**
+
+Kubernetes Pods need access to the application image. Loading the image into Minikube avoids depending on a remote image registry for this practical.
+
+---
+
+# Phase 3: Create Kubernetes Deployment
+
+## Step 8: Create deployment.yaml
+
+I created a Deployment to run two replicas of my Python Django application.
+
+```bash
+vim deployment.yaml
+```
+
+Add the following configuration:
 
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
+
 metadata:
   name: sample-python-app
+  labels:
+    app: sample-python-app
+
 spec:
   replicas: 2
+
   selector:
     matchLabels:
-      app: sample-python-application
+      app: sample-python-app
+
   template:
     metadata:
       labels:
-        app: sample-python-application
+        app: sample-python-app
+
     spec:
       containers:
         - name: python-app
-          image: python-sample-application-demo:v1
+          image: python-sample-app:v1
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
 ```
 
-### Important points
+Save the file:
 
-- `replicas: 2` creates two application Pods.
-- `selector` identifies Pods using labels.
-- `template` defines how the Pods should be created.
-- `containerPort: 8000` represents the port used by the application.
+```text
+Esc
+:wq
+Enter
+```
 
-**Important:** Labels and selectors play a major role in Kubernetes Services. The Service must use the same label as the Pods it needs to discover.
+### Understanding the Configuration
 
-### Step 2: Deploy the application
+| Configuration | Explanation |
+|---|---|
+| kind: Deployment | Creates a Kubernetes Deployment |
+| replicas: 2 | Maintains two application Pods |
+| selector | Identifies Pods using labels |
+| template | Defines the Pod configuration |
+| image | Specifies the Docker image |
+| containerPort: 8000 | Application listening port |
+
+**Important:** The label `app: sample-python-app` is important because I will use exactly the same label in the Service selector.
+
+## Step 9: Apply the Deployment
 
 ```bash
 kubectl apply -f deployment.yaml
+```
+
+Expected output:
+
+```text
+deployment.apps/sample-python-app created
 ```
 
 Check the Deployment:
@@ -128,437 +266,845 @@ Check the Pods:
 kubectl get pods
 ```
 
-Check Pod IP addresses:
+Get additional information, including Pod IP addresses:
 
 ```bash
 kubectl get pods -o wide
 ```
 
-## 5. Understanding Pod IP Changes
+Both Pods should show:
 
-One important problem with accessing applications directly through Pod IP addresses is that Pod IPs are not permanent.
+- READY: 1/1
+- STATUS: Running
 
-For example, initially, two Pods might have these IP addresses:
+## Step 10: Understand Dynamic Pod IP Addresses
 
-```text
-Pod 1: 172.17.0.5
-Pod 2: 172.17.0.6
+I checked the IP addresses of the two Pods:
+
+```bash
+kubectl get pods -o wide
 ```
 
-If one Pod is deleted, the ReplicaSet creates a replacement Pod.
+Then I deleted one Pod to understand how Kubernetes handles Pod failures.
 
-The new Pod may receive a different IP address:
+First, copy one of the Pod names:
 
-```text
-Pod 1: 172.17.0.5
-Pod 2: 172.17.0.7
+```bash
+kubectl delete pod <pod-name>
 ```
 
-This creates a problem if users or other applications are directly accessing the old Pod IP.
+Check again:
 
-The old IP might no longer point to the application.
-
-### Why do we need Services?
-
-Kubernetes Services solve this problem by identifying Pods through labels and selectors instead of depending on individual Pod IP addresses.
-
-Even if a Pod is replaced and receives a new IP address, the Service can discover it as long as it has the matching label and is ready to receive traffic.
-
-## 6. Understanding Service Discovery
-
-Service Discovery is one of the main responsibilities of Kubernetes Services.
-
-A Service uses labels and selectors to identify its backend Pods.
-
-### Example
-
-Suppose our Deployment creates Pods with this label:
-
-```yaml
-labels:
-  app: sample-python-application
+```bash
+kubectl get pods -o wide
 ```
 
-The Service uses the same label in its selector:
+I observed that Kubernetes automatically created a replacement Pod.
 
-```yaml
-selector:
-  app: sample-python-application
-```
+The new Pod could receive a different IP address.
 
-Kubernetes identifies all matching Pods and uses them as Service endpoints.
+**What I learned:**
 
-### What happens when a Pod is replaced?
+- Pod IP addresses can change.
+- Deployments maintain the desired number of replicas.
+- Applications should not depend on fixed Pod IP addresses.
+- Kubernetes Services provide a stable way to access application Pods.
 
-1. A Pod is deleted or fails.
-2. The ReplicaSet creates a replacement Pod.
-3. The new Pod receives the matching label.
-4. Kubernetes updates the Service's endpoints.
-5. The Service can send traffic to the new Pod when it is ready.
+---
 
-This is how Service Discovery helps avoid depending on changing Pod IP addresses.
+# Phase 4: Create a NodePort Service
 
-## 7. Understanding NodePort Service
+## Step 11: Create service.yaml
 
-Now we come to the first major practical demonstration of Services.
-
-A Pod is normally accessible through its cluster network. If we want users inside our organization's network to access the application through a Kubernetes node, we can use NodePort.
-
-### What is NodePort?
-
-NodePort exposes an application through a port on the Kubernetes nodes.
-
-Users who can reach the node IP address and the assigned NodePort can access the application.
-
-The default NodePort range is:
-
-```text
-30000 – 32767
-```
-
-### Step 1: Create the Service YAML file
-
-Create a file:
+I created a Service to expose my Python application.
 
 ```bash
 vim service.yaml
 ```
 
-Example configuration:
+Add the following configuration:
 
 ```yaml
 apiVersion: v1
 kind: Service
+
 metadata:
   name: python-django-app-service
+
 spec:
   type: NodePort
+
   selector:
-    app: sample-python-application
+    app: sample-python-app
+
   ports:
-    - port: 80
+    - protocol: TCP
+      port: 80
       targetPort: 8000
       nodePort: 30007
 ```
 
-### Understanding the configuration
+### Understanding the Service Configuration
 
-| Field | Purpose |
+| Field | Explanation |
 |---|---|
-| `type: NodePort` | Exposes the application through a node port |
-| `selector` | Finds the matching application Pods |
-| `port: 80` | Port exposed by the Service |
-| `targetPort: 8000` | Port where the application runs inside the container |
-| `nodePort: 30007` | Port exposed on the Kubernetes nodes |
+| kind: Service | Creates a Kubernetes Service |
+| type: NodePort | Exposes the Service through a node port |
+| selector | Finds Pods using their labels |
+| port: 80 | Service port |
+| targetPort: 8000 | Application port inside the Pod |
+| nodePort: 30007 | Port exposed on the Kubernetes node |
 
-### Step 2: Create the Service
+### Traffic Flow
+
+```text
+Client Request
+      |
+      v
+NodePort: 30007
+      |
+      v
+Service Port: 80
+      |
+      v
+Pod TargetPort: 8000
+```
+
+## Step 12: Create the Service
 
 ```bash
 kubectl apply -f service.yaml
 ```
 
-Check the Service:
+Expected output:
+
+```text
+service/python-django-app-service created
+```
+
+Check:
+
+```bash
+kubectl get services
+```
+
+Or:
 
 ```bash
 kubectl get svc
 ```
 
-Check its details:
+Expected output should look similar to:
 
-```bash
-kubectl describe service python-django-app-service
+```text
+NAME                        TYPE       CLUSTER-IP      PORT(S)
+python-django-app-service   NodePort   10.106.x.x      80:30007/TCP
 ```
 
-### Step 3: Access the application
+The ClusterIP and other values may differ.
 
-Get the Minikube IP:
+## Step 13: Verify Service Endpoints
+
+```bash
+kubectl get endpoints python-django-app-service
+```
+
+Expected result: Two backend Pod IP addresses with port 8000.
+
+For the newer Kubernetes API, also check:
+
+```bash
+kubectl get endpointslices \
+  -l kubernetes.io/service-name=python-django-app-service
+```
+
+This confirms that the Service has discovered the application Pods.
+
+---
+
+# Phase 5: Access the Application Using NodePort
+
+## Step 14: Get the Minikube IP
 
 ```bash
 minikube ip
 ```
 
-Access the application using:
+In my earlier execution, the Minikube IP was:
 
 ```text
-http://<MINIKUBE-IP>:30007/demo
+192.168.49.2
 ```
 
-The request follows this path:
+The IP may be different when the cluster is recreated.
+
+## Step 15: Test NodePort Access
+
+The standard NodePort URL is:
 
 ```text
-User
- |
- v
-Node IP : 30007
- |
- v
-Kubernetes Service
- |
- v
-Matching Application Pod
- |
- v
-Python Django Application
+http://<MINIKUBE-IP>:30007/demo/
 ```
 
-The Service forwards traffic to the application Pods on port `8000`.
-
-### Important point
-
-NodePort does not automatically make an application publicly accessible to everyone.
-
-Users must have network access to the Kubernetes node. Firewall rules, cloud security groups and network configuration can also affect access.
-
-## 8. Understanding LoadBalancer Service
-
-Now suppose we want external customers outside our organization to access the application.
-
-NodePort alone may not be enough for this requirement.
-
-For this purpose, Kubernetes provides the LoadBalancer Service type.
-
-### What is LoadBalancer?
-
-A LoadBalancer Service requests an external load balancer from a supported cloud provider or load balancer implementation.
-
-On cloud platforms such as AWS, Azure and GCP, the corresponding cloud integration can provision the required load balancer.
-
-### Step 1: Change the Service type
-
-The instructor demonstrated changing the existing Service from NodePort to LoadBalancer.
-
-The command used was:
+For example:
 
 ```bash
-kubectl edit svc python-django-app-service
+curl -L http://192.168.49.2:30007/demo/
 ```
 
-Find:
+If successful, the Django application should return its response.
+
+### Issue Faced: NodePort Connection Failed
+
+My first attempt returned:
+
+```text
+curl: (7) Failed to connect to 192.168.49.2 port 30007
+```
+
+**Reason:**
+
+Minikube was running with an isolated Docker network, so its internal node IP was not necessarily reachable directly from the EC2 host.
+
+**Solution 1: Use Minikube Service Helper**
+
+```bash
+minikube service python-django-app-service --url
+```
+
+This can provide a local tunnel URL on Linux. Keep the command running and use another terminal to test the returned URL:
+
+```bash
+curl -L <RETURNED-URL>/demo/
+```
+
+**Solution 2: Use Port Forwarding**
+
+In one terminal:
+
+```bash
+kubectl port-forward service/python-django-app-service 8080:80
+```
+
+Keep it running.
+
+Open another terminal:
+
+```bash
+curl -L http://127.0.0.1:8080/demo/
+```
+
+This provides a reliable way to test the Service through port forwarding.
+
+**Important:** Port forwarding tests the Service through a local tunnel. It does not prove direct NodePort connectivity.
+
+---
+
+# Phase 6: Understand LoadBalancer Service
+
+## Step 16: Change NodePort to LoadBalancer
+
+I wanted to understand how Kubernetes exposes applications to external users using a LoadBalancer Service.
+
+Open:
+
+```bash
+vim service.yaml
+```
+
+Change:
 
 ```yaml
 type: NodePort
 ```
 
-Change it to:
+To:
 
 ```yaml
 type: LoadBalancer
 ```
 
-Save and exit.
+Apply:
 
-### Step 2: Check the Service
+```bash
+kubectl apply -f service.yaml
+```
+
+Check:
 
 ```bash
 kubectl get svc
 ```
 
-On a supported cloud environment, Kubernetes can request an external load balancer and display its external address.
-
-### Why did LoadBalancer not receive an external IP in Minikube?
-
-The instructor used Minikube for the demonstration.
-
-Minikube does not automatically provision an AWS, Azure or GCP load balancer.
-
-Therefore, the external IP may remain:
+On my Minikube cluster, the External IP can remain:
 
 ```text
 <pending>
 ```
 
-This is expected without a suitable load balancer implementation.
+**Why?**
 
-### How does it work on AWS?
+Minikube does not automatically create an AWS, Azure or GCP load balancer.
 
-When a LoadBalancer Service is created on a supported AWS Kubernetes environment, the cloud integration can communicate with AWS and provision the appropriate load balancer.
+In a supported cloud environment, a LoadBalancer Service requests an external load balancer through the configured cloud integration.
 
-The external endpoint can then be used to access the application.
+## Step 17: Restore NodePort
 
-**In simple words:** LoadBalancer provides an external endpoint for applications through a supported load balancer implementation.
+For the remaining practical, I restored NodePort.
 
-## 9. Understanding How Labels and Selectors Control Service Discovery
+Open:
 
-The instructor also demonstrated what happens when the Service selector does not match the Pod labels.
-
-Initially, the Pod had this label:
-
-```yaml
-app: sample-python-application
+```bash
+vim service.yaml
 ```
 
-The Service selector also used:
+Restore:
 
 ```yaml
-selector:
-  app: sample-python-application
+type: NodePort
 ```
 
-Therefore, the Service could discover the Pods.
+Apply:
 
-### What happens if the selector is changed?
+```bash
+kubectl apply -f service.yaml
+```
 
-Suppose the Service selector is changed to:
+Verify:
+
+```bash
+kubectl get svc
+```
+
+Make sure the Service shows:
+
+```text
+NodePort   80:30007/TCP
+```
+
+---
+
+# Phase 7: Demonstrate Service Discovery
+
+## Step 18: Verify Existing Labels
+
+Check Pod labels:
+
+```bash
+kubectl get pods --show-labels
+```
+
+My application Pods should have:
+
+```text
+app=sample-python-app
+```
+
+Check the Service selector:
+
+```bash
+kubectl describe service python-django-app-service
+```
+
+Look for:
+
+```text
+Selector: app=sample-python-app
+```
+
+Both values should match.
+
+Check endpoints:
+
+```bash
+kubectl get endpoints python-django-app-service
+```
+
+Both application Pod IP addresses should appear.
+
+## Step 19: Intentionally Break Service Discovery
+
+Now I intentionally changed the Service selector to understand what happens when labels and selectors do not match.
+
+Open:
+
+```bash
+vim service.yaml
+```
+
+Change:
 
 ```yaml
 selector:
   app: sample-python-app
 ```
 
-Now the selector does not match the Pod label.
-
-As a result, the Service cannot discover those Pods.
-
-The Service has no matching backend endpoints, so requests through it cannot reach the application.
-
-### How to fix it?
-
-Restore the correct selector:
+To:
 
 ```yaml
 selector:
-  app: sample-python-application
+  app: wrong-python-app
 ```
 
-Apply the updated configuration:
+Save the file.
+
+Apply the changes:
 
 ```bash
 kubectl apply -f service.yaml
 ```
 
-The Service can then discover the matching Pods again.
+## Step 20: Verify the Changed Selector
 
-**Important learning:** Even a small difference in labels and selectors can prevent a Service from finding its backend Pods.
-
-## 10. Understanding Load Balancing in Kubernetes Services
-
-Another important responsibility of Kubernetes Services is load balancing.
-
-Imagine we have two application Pods:
-
-```text
-Pod 1: 172.17.0.5
-Pod 2: 172.17.0.7
+```bash
+kubectl describe service python-django-app-service
 ```
 
-If multiple requests come to the Service, Kubernetes networking distributes connections across the available backend Pods.
+Expected:
 
-This helps prevent all traffic from depending on a single Pod.
+```text
+Selector: app=wrong-python-app
+```
 
-### Practical demonstration
+Now check the endpoints:
 
-The instructor used a tool called KubeShark to observe traffic inside Kubernetes.
+```bash
+kubectl get endpoints python-django-app-service
+```
 
-Multiple requests were sent to the application through the Service.
+Expected:
 
-The traffic capture showed requests reaching both backend Pods.
+```text
+NAME                        ENDPOINTS
+python-django-app-service   <none>
+```
 
-This demonstrated how the Service distributes traffic across multiple Pods.
+This happens because none of my application Pods have the label `app=wrong-python-app`.
 
-### Important point
+## Step 21: Test the Application
 
-Kubernetes Service traffic distribution should not be understood as a guarantee that every Pod receives exactly the same number of requests.
+If using the local port-forward method, access it from another terminal:
 
-The actual distribution depends on the networking implementation and connection behaviour.
+```bash
+curl -v http://127.0.0.1:8080/demo/
+```
 
-## 11. Understanding KubeShark
+Expected: The request should fail because the Service has no backend endpoints.
 
-KubeShark is a tool used to observe and analyze network traffic inside Kubernetes.
+**What I learned:**
 
-It helps DevOps Engineers understand how traffic flows between different Kubernetes components and applications.
+When the Service selector does not match the Pod labels, Kubernetes cannot discover the application Pods through that Service.
 
-### Why is KubeShark useful?
+### Issue Faced: Application Still Responded After Changing the Selector
 
-- Observe network traffic inside Kubernetes.
-- Understand communication between Services and Pods.
-- Investigate traffic flow.
-- Analyze TCP and HTTP traffic.
-- Troubleshoot networking problems.
-- Understand how applications communicate inside a cluster.
+Initially, I changed the selector to `wrong-python-app` but still received the application response.
 
-### Installation reference
+I learned not to judge Service Discovery only by the curl response.
+
+I verified the following:
+
+```bash
+kubectl get pods --show-labels
+```
+
+```bash
+kubectl describe service python-django-app-service
+```
+
+```bash
+kubectl get endpoints python-django-app-service
+```
+
+```bash
+kubectl get svc -A
+```
+
+I also made sure I was testing the correct Service, namespace and URL.
+
+If the endpoints are empty, the Service has no selected backend Pods. A successful response would indicate that I was reaching another working route or Service, or that I was not testing the updated configuration.
+
+## Step 22: Fix Service Discovery
+
+Now I restored the original selector.
+
+Open:
+
+```bash
+vim service.yaml
+```
+
+Change it back:
+
+```yaml
+selector:
+  app: sample-python-app
+```
+
+Apply:
+
+```bash
+kubectl apply -f service.yaml
+```
+
+Check:
+
+```bash
+kubectl get endpoints python-django-app-service
+```
+
+The two Pod IP addresses should appear again.
+
+Test:
+
+```bash
+curl -L http://127.0.0.1:8080/demo/
+```
+
+Or use the working Minikube Service URL.
+
+The application should now respond successfully.
+
+---
+
+# Phase 8: Demonstrate Load Balancing
+
+## Step 23: Verify the Two Application Pods
+
+```bash
+kubectl get pods -o wide
+```
+
+I checked that both Pods were running.
+
+The two Pods act as backend application instances.
+
+## Step 24: Generate Multiple HTTP Requests
+
+I sent multiple requests to the Python application to generate traffic.
+
+Using the working local port-forward URL:
+
+```bash
+for i in {1..10}; do
+    curl -s -L http://127.0.0.1:8080/demo/ > /dev/null
+    echo "Request $i sent"
+done
+```
+
+This generates ten HTTP requests.
+
+The Kubernetes Service forwards connections to its available backend Pods.
+
+With multiple Pods, the Service provides traffic distribution across the backends.
+
+**Note:** Kubernetes does not guarantee an exact 50-50 distribution of requests. Connection reuse and networking behaviour can affect the distribution.
+
+---
+
+# Phase 9: Install and Configure Kubeshark
+
+## Step 25: Install Kubeshark
+
+Kubeshark is a network traffic monitoring tool for Kubernetes.
+
+I used it to understand how requests travel between Kubernetes resources.
 
 Official documentation:
 
 https://docs.kubeshark.co/
 
-The instructor demonstrated the installation and usage of KubeShark during the lesson.
+Follow the official installation instructions for Linux.
 
-### Starting a traffic capture
-
-The command demonstrated was:
+Verify the CLI:
 
 ```bash
-kubeshark tap -a
+kubeshark --help
 ```
 
-The `-a` option is used to capture traffic across all namespaces.
+## Step 26: Start Traffic Capture
 
-Without this option, the capture can be limited to the default namespace.
+To capture traffic across all namespaces, I used:
 
-The instructor accessed the KubeShark interface through:
+```bash
+kubeshark tap -A
+```
+
+Keep the capture process running.
+
+The `-A` option captures traffic across all namespaces.
+
+## Step 27: Open the Kubeshark Dashboard
+
+I accessed the dashboard using:
 
 ```text
 http://localhost:8899
 ```
 
-### What did I learn from the traffic capture?
+If accessing from my Windows laptop, I used SSH port forwarding:
 
-The traffic capture helped explain how a request travels from the client to the Kubernetes node, through the Service and finally to one of the backend Pods.
+```bash
+ssh -L 8899:localhost:8899 -i your-key.pem ubuntu@<EC2-PUBLIC-IP>
+```
 
-It also helped demonstrate how multiple requests can reach different Pods through the same Service.
+Keep the SSH session open and visit the dashboard in the local browser.
 
-## 12. Important Kubernetes Service Commands
+## Step 28: Generate Python Application Traffic
 
-| Command | Purpose |
+Keep Kubeshark running.
+
+Open another terminal and execute:
+
+```bash
+for i in {1..10}; do
+    curl -s -L http://127.0.0.1:8080/demo/ > /dev/null
+    echo "Request $i sent"
+    sleep 1
+done
+```
+
+## Step 29: Inspect Traffic in Kubeshark
+
+Open the Kubeshark dashboard.
+
+Navigate to:
+
+1. Real-time.
+2. API Stream.
+3. Find requests to `/demo/`.
+4. Open an individual request.
+5. Inspect Request and Response information.
+
+I observed successful HTTP requests returning status code `200 OK`.
+
+## Step 30: Understand the Captured Traffic
+
+| Information | Meaning |
 |---|---|
-| `kubectl get svc` | Lists Services |
-| `kubectl get svc -o wide` | Displays additional Service information |
-| `kubectl describe svc <name>` | Shows Service details |
-| `kubectl get pods` | Lists Pods |
-| `kubectl get pods -o wide` | Displays Pod IP addresses and node information |
-| `kubectl get deployments` | Lists Deployments |
-| `kubectl apply -f service.yaml` | Creates or updates a Service |
-| `kubectl edit svc <name>` | Edits an existing Service |
-| `kubectl delete svc <name>` | Deletes a Service |
-| `kubectl get endpoints <name>` | Displays Service endpoints |
-| `kubectl get endpointslices` | Lists EndpointSlices |
+| GET | HTTP request method |
+| `/demo/` | Requested application endpoint |
+| HTTP 200 | Successful HTTP response |
+| Source | Origin of the captured request |
+| Destination | Target of the captured request |
+| Port 8000 | Python application port |
 
-## 13. What I Learned
+## Step 31: Understand Traffic Distribution
 
-After completing this lesson, I understood the practical working of Kubernetes Services in more detail.
+I used Kubeshark to inspect how requests reached my application Pods.
 
-The main concepts I learned were:
+The expected traffic flow was:
 
-1. How to deploy an application using a Kubernetes Deployment.
-2. Why directly accessing Pod IP addresses is not reliable.
-3. How labels and selectors help Services discover Pods.
-4. How NodePort exposes applications through Kubernetes nodes.
-5. How LoadBalancer exposes applications through an external load balancer.
-6. How Kubernetes Services distribute traffic across multiple Pods.
-7. How KubeShark helps us understand traffic flow inside Kubernetes.
+```text
+Client
+  |
+  v
+Kubernetes Service
+  |
+  |------------------|
+  |                  |
+  v                  v
+Pod 1              Pod 2
+Python Django      Python Django
+  |                  |
+  --------------------
+```
 
-## 14. Final Understanding
+**What I learned:**
 
-Kubernetes Services are important because they provide a stable way to access applications even when Pods are replaced or their IP addresses change.
+Kubeshark helped me visualize Kubernetes network communication instead of relying only on terminal commands.
 
-They help applications discover each other, distribute traffic and expose applications to users.
-
-I also understood that different Service types are used for different access requirements:
-
-- ClusterIP for internal cluster communication.
-- NodePort for access through Kubernetes node IPs and ports.
-- LoadBalancer for external access through a supported load balancer.
-
-My main takeaway from this lesson is that understanding how traffic flows inside Kubernetes is just as important as knowing how to create Deployments and Services.
+It made it easier to understand how Services route requests to backend Pods.
 
 ---
 
-## 15. Learning References
+# Phase 10: Final Verification
 
-- [Kubernetes Services Documentation](https://kubernetes.io/docs/concepts/services-networking/service/)
-- [Kubernetes Deployments Documentation](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
-- [Kubernetes Labels and Selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/)
-- [KubeShark Documentation](https://docs.kubeshark.co/)
+## Step 32: Check Deployment
 
-**Learning source:** Abhishek Veeramalla – Complete DevOps Course, Day 37: Deep Dive into Kubernetes Services.
+```bash
+kubectl get deployments
+```
+
+## Step 33: Check Pods
+
+```bash
+kubectl get pods -o wide
+```
+
+## Step 34: Check Services
+
+```bash
+kubectl get svc
+```
+
+## Step 35: Check Endpoints
+
+```bash
+kubectl get endpoints python-django-app-service
+```
+
+## Step 36: Describe the Service
+
+```bash
+kubectl describe service python-django-app-service
+```
+
+## Step 37: Describe the Deployment
+
+```bash
+kubectl describe deployment sample-python-app
+```
+
+These commands helped me verify the Deployment, Pods, Service configuration and backend endpoints.
+
+---
+
+# Phase 11: Cleanup
+
+After completing the practical, I removed the application resources.
+
+First, stop any running port-forward process using `Ctrl + C`.
+
+Delete the Service:
+
+```bash
+kubectl delete -f service.yaml
+```
+
+Delete the Deployment:
+
+```bash
+kubectl delete -f deployment.yaml
+```
+
+Verify:
+
+```bash
+kubectl get all
+```
+
+The application Deployment and Service should no longer appear.
+
+I did not remove the Minikube cluster or Kubeshark because I may need them for other practicals.
+
+---
+
+# 12. Errors Faced and Solutions
+
+| Error / Issue | Reason | Solution |
+|---|---|---|
+| NodePort connection failed | Minikube IP was not reachable directly from EC2 host | Used `minikube service --url` and port forwarding |
+| Selector changed but application still responded | Actual Service configuration or request route needed verification | Checked labels, selectors, endpoints and URL |
+| Kubeshark showed too much system traffic | Capturing traffic across multiple namespaces | Identified Python application's `/demo/` requests |
+| Kubeshark traffic was not visible immediately | Capture or proxy connection needed attention | Verified capture process and Kubeshark connection |
+
+---
+
+# 13. What I Learned and Achieved
+
+Through this practical, I learned:
+
+1. How to create a Kubernetes Deployment with multiple replicas.
+2. How Kubernetes automatically recreates deleted Pods.
+3. Why Pod IP addresses should not be hardcoded.
+4. How Kubernetes Services provide stable access to application Pods.
+5. How to configure a NodePort Service.
+6. The difference between ClusterIP, NodePort and LoadBalancer.
+7. How labels and selectors are used for Service Discovery.
+8. What happens when Service selectors do not match Pod labels.
+9. How Kubernetes Services distribute traffic between backend Pods.
+10. How to use Kubeshark to monitor Kubernetes network traffic.
+
+**Final Outcome:**
+
+I successfully deployed a Python Django application on Minikube, created a Kubernetes Service, tested Service Discovery, explored LoadBalancer behaviour and used Kubeshark to inspect application traffic.
+
+---
+
+# 14. Important Commands Reference
+
+## Environment and Cluster
+
+```bash
+minikube status
+minikube start
+minikube ip
+kubectl get nodes -o wide
+kubectl get all
+```
+
+## Docker Image
+
+```bash
+docker build -t python-sample-app:v1 .
+docker images
+minikube image load python-sample-app:v1
+```
+
+## Deployment
+
+```bash
+kubectl apply -f deployment.yaml
+kubectl get deployments
+kubectl get pods
+kubectl get pods -o wide
+kubectl get pods --show-labels
+kubectl delete pod <pod-name>
+```
+
+## Services and Endpoints
+
+```bash
+kubectl apply -f service.yaml
+kubectl get svc
+kubectl describe svc python-django-app-service
+kubectl get endpoints python-django-app-service
+kubectl get endpointslices
+```
+
+## Application Access
+
+```bash
+minikube service python-django-app-service --url
+kubectl port-forward service/python-django-app-service 8080:80
+curl -L http://127.0.0.1:8080/demo/
+```
+
+## Kubeshark
+
+```bash
+kubeshark --help
+kubeshark tap -A
+```
+
+## Cleanup
+
+```bash
+kubectl delete -f service.yaml
+kubectl delete -f deployment.yaml
+kubectl get all
+```
+
+---
+
+# 15. References and Learning Resources
+
+I referred to the following resources while completing this practical.
+
+| Resource | Purpose |
+|---|---|
+| [Abhishek Veeramalla – Docker Zero to Hero](https://github.com/iam-veeramalla/Docker-Zero-to-Hero) | Python sample application |
+| [Kubernetes Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) | Deployment configuration |
+| [Kubernetes Services](https://kubernetes.io/docs/concepts/services-networking/service/) | ClusterIP, NodePort and LoadBalancer |
+| [Debugging Kubernetes Services](https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/) | Service troubleshooting |
+| [Kubernetes EndpointSlices](https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/) | Understanding Service endpoints |
+| [Minikube Documentation](https://minikube.sigs.k8s.io/docs/) | Cluster management and networking |
+| [Kubeshark Documentation](https://docs.kubeshark.co/) | Network traffic monitoring |
+
+---
+
+# Final Takeaway
+
+This practical helped me understand that Kubernetes Services are not just used to expose applications. They also provide a stable way to discover Pods and distribute traffic between multiple application replicas.
+
+Using Kubeshark made the practical more interesting because I could actually observe network traffic instead of only reading about how Kubernetes works.
