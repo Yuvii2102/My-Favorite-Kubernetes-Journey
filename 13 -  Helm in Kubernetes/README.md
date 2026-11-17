@@ -1,382 +1,283 @@
-# Helm in Kubernetes – Complete Notes and Practicals
+# Helm in Kubernetes – Theory Notes
 
-## 1. Introduction to Helm
+## 1. What is Helm?
 
 Helm is a **package manager for Kubernetes**.
 
-Just like `apt` is used to install and manage packages in Ubuntu, Helm is used to install and manage applications and controllers in Kubernetes.
+To understand Helm, we can compare it with the `apt` package manager in Ubuntu.
 
-For example, in Ubuntu, if I want to install Python, I can use:
+In Ubuntu, if we want to install Python, Java or any other package, we use the `apt` package manager.
 
-```bash
-sudo apt update
-sudo apt install python3
-```
+Similarly, in Kubernetes, if we want to install applications or controllers such as Prometheus, Grafana, Argo CD or NGINX Ingress Controller, we can use Helm.
 
-Similarly, if I want to install applications such as Prometheus, Grafana, Argo CD or NGINX in Kubernetes, I can use Helm instead of manually creating multiple Kubernetes YAML files.
+Without Helm, we may have to manually create and manage multiple Kubernetes YAML files for installing an application.
 
-Helm helps us to:
+Helm makes this process easier by packaging all the required Kubernetes resources into a package called a **Helm chart**.
 
-- Install applications in Kubernetes.
-- Upgrade application versions.
+Using Helm, we can:
+
+- Install Kubernetes applications and controllers.
+- Upgrade applications to newer versions.
 - Uninstall applications.
-- Customize application configurations.
-- Package our own applications as Helm charts.
-- Share Helm charts with other teams.
+- Manage different versions of applications.
+- Package our organization's applications as Helm charts.
+- Share our Helm charts with other teams.
+
+In simple words, Helm makes Kubernetes application deployment and management easier.
 
 ## 2. Why Do We Need Helm?
 
-Before Helm, we could deploy applications in Kubernetes using `kubectl apply` or `kubectl create`.
+We can deploy applications in Kubernetes using `kubectl apply` or `kubectl create`. So why do we need Helm?
 
-However, installing a complete application can require multiple Kubernetes resources.
+Let's understand this with a real-world example.
 
-For example, installing Prometheus may require:
+Imagine I am working as a DevOps engineer in an organization. My responsibility is to install and maintain different applications and tools on Linux servers.
+
+Suppose I need to install 10 different packages, such as:
+
+- Apache
+- Java
+- Node.js
+- Python
+- NGINX
+
+Without a package manager, I may have to write separate shell scripts for installing each package.
+
+These scripts may include:
+
+- Downloading the package.
+- Extracting the files.
+- Configuring the application.
+- Setting permissions.
+- Adding the application to the system path.
+- Managing dependencies.
+
+The problem does not end with installation. I also need to maintain these scripts whenever a new version is released or the installation process changes.
+
+If I have to manage 100 different packages, maintaining all these scripts becomes difficult.
+
+This is where the `apt` package manager helps. Instead of manually handling all these steps, I can use the package manager to install and manage the required packages.
+
+The same problem exists in Kubernetes.
+
+Imagine I need to install Prometheus. It may require multiple Kubernetes resources such as:
 
 - Namespace
 - ServiceAccount
 - ConfigMap
-- Deployment or StatefulSet
+- StatefulSet or Deployment
 - Services
-- Other supporting resources
 
-We would have to create and maintain multiple YAML files for these resources.
+Similarly, Argo CD and other controllers may also require multiple resources and configurations.
 
-Imagine that I am working as a DevOps engineer and my organization uses 20 different applications and controllers.
+If I manually maintain separate YAML files and scripts for every application, it creates a lot of maintenance work for the DevOps team.
 
-Without Helm, I may have to:
+**Helm solves this problem.**
 
-1. Maintain separate YAML files for every application.
-2. Manage different application versions.
-3. Update configuration files whenever requirements change.
-4. Maintain installation scripts.
-5. Make sure all required resources are deployed correctly.
+It packages all the required Kubernetes resources into Helm charts. We can then use Helm to install, upgrade and uninstall applications without manually managing every resource separately.
 
-This becomes difficult when multiple teams use different versions and configurations.
+### Main benefits of Helm
 
-**Helm solves this problem** by packaging all the required Kubernetes resources into a single package called a Helm chart.
+1. **Simplifies installation:** We can install applications using Helm charts instead of managing many YAML files manually.
+2. **Version management:** We can manage different versions of applications.
+3. **Easy upgrades:** We can upgrade applications when newer versions are available.
+4. **Easy removal:** We can uninstall applications using their release names.
+5. **Reusability:** We can create charts once and reuse them in different environments.
+6. **Customization:** We can customize application configurations using values.
+7. **Sharing:** We can package and share our organization's applications as Helm charts.
 
-Instead of manually managing many YAML files, I can use Helm commands to install, upgrade and uninstall applications.
+## 3. What Can We Do Using Helm?
 
-## 3. Important Helm Components
+Helm is not only used for installing applications.
 
-There are three important concepts that I learned:
+It supports different application management operations.
+
+### 3.1 Install
+
+We can install applications and Kubernetes controllers using Helm.
+
+For example, Prometheus, Grafana, Argo CD and NGINX.
+
+### 3.2 Upgrade
+
+We can upgrade an installed application to a newer version.
+
+For example, if an organization is using Argo CD version 2.12, it may upgrade to version 2.13.
+
+Helm helps manage this upgrade process.
+
+### 3.3 Uninstall
+
+We can remove applications that are no longer required.
+
+### 3.4 Create Our Own Helm Charts
+
+We can also package applications developed by our organization as Helm charts.
+
+For example, if an organization has Payments, Shipping and Transactions microservices, we can create separate Helm charts for them.
+
+Other teams can then use those charts to deploy the applications.
+
+## 4. Helm 3 Architecture
+
+Helm 3 does not require any additional server-side component to be installed inside the Kubernetes cluster.
+
+In earlier Helm versions, particularly Helm 2, a component called **Tiller** was used inside the cluster.
+
+However, Helm 3 removed this requirement.
+
+We only need Helm installed on the machine from which we manage our Kubernetes cluster.
+
+### How does Helm know which Kubernetes cluster to connect to?
+
+This works similarly to `kubectl`.
+
+We may have multiple Kubernetes clusters configured on our machine.
+
+For example:
+
+- Development cluster
+- Testing cluster
+- Production cluster
+
+The Kubernetes configuration file, called `kubeconfig`, contains information about these clusters and their contexts.
+
+Helm uses the current Kubernetes context to determine which cluster it should communicate with.
+
+So, if our current context points to the development cluster, Helm communicates with that cluster.
+
+If we change the current context to production, Helm communicates with the production cluster.
+
+We do not need to install Helm separately inside every cluster.
+
+## 5. Important Components of Helm
+
+There are three important concepts that we need to understand before working with Helm:
 
 1. Helm Repository
 2. Helm Chart
 3. Helm Release
 
-### 3.1 Helm Repository
+### 5.1 Helm Repository
 
-A Helm repository is a centralized location where Helm charts are stored.
+A Helm repository is a centralized location that stores Helm charts.
 
-For example, the Bitnami repository contains charts for many popular applications.
+We need to add a repository before searching for and installing the charts available in it.
 
-We first add a repository and then search for the charts available inside it.
+This concept is similar to package repositories in Linux.
 
-### 3.2 Helm Chart
+For example, when we install a package using `apt`, the package manager looks for that package in its configured repositories.
 
-A Helm chart is a package that contains all the required Kubernetes configuration files and templates needed to deploy an application.
+Similarly, Helm looks for charts in the repositories that we have added.
+
+One popular repository mentioned by my teacher is **Bitnami**.
+
+Bitnami provides charts for many commonly used applications and tools.
+
+For example, its repository has included charts for applications such as Redis, Spark and other commonly used software.
+
+However, not every application is available in the same repository.
+
+Some organizations maintain their own Helm repositories for their applications and controllers.
+
+### 5.2 Helm Chart
+
+A Helm chart is a package or bundle containing the Kubernetes resources and configuration templates required to deploy an application.
 
 For example:
 
-- Prometheus has a Helm chart.
-- Grafana has a Helm chart.
-- NGINX has a Helm chart.
-- Argo CD has a Helm chart.
+- Prometheus chart
+- Grafana chart
+- NGINX chart
+- Argo CD chart
 
-We can also create our own Helm charts for the microservices developed in our organization.
+The chart contains the required Kubernetes configuration files and templates for deploying the application.
 
-### 3.3 Helm Release
+Instead of manually managing every YAML file, we can use the chart to deploy the application.
 
-A release is an installed instance of a Helm chart.
+We can also create our own charts for applications developed inside our organization.
 
-For example, if I install an NGINX chart with the release name `nginx-v1`, then `nginx-v1` is the name of that release.
+### 5.3 Helm Release
 
-We can install the same chart multiple times using different release names and configurations.
+A Helm release is a deployed instance of a Helm chart.
 
-**Simple example:**
-
-| Component | Example |
-|---|---|
-| Repository | Bitnami |
-| Chart | NGINX |
-| Release | nginx-v1 |
-
-## 4. Helm Architecture
-
-Helm 3 does not require any additional server-side component to be installed inside the Kubernetes cluster.
-
-Helm runs from our local machine or terminal and communicates with the Kubernetes cluster using the Kubernetes configuration file (`kubeconfig`).
-
-It works similarly to `kubectl`.
-
-If I have multiple Kubernetes clusters configured, Helm uses the current Kubernetes context to determine which cluster to communicate with.
-
-Check the current context:
-
-```bash
-kubectl config current-context
-```
-
-List available contexts:
-
-```bash
-kubectl config get-contexts
-```
-
-Change the current context:
-
-```bash
-kubectl config use-context <context-name>
-```
-
-Check whether Helm is installed:
-
-```bash
-helm version
-```
-
-## 5. Installing Helm
-
-Helm can be installed on different operating systems.
-
-For Ubuntu, follow the official Helm installation documentation:
-
-https://helm.sh/docs/intro/install/
-
-The teacher explained that Helm should be installed on the machine from which we manage our Kubernetes cluster.
-
-We do not need to install Helm inside every Kubernetes cluster.
-
-After installation, verify it:
-
-```bash
-helm version
-```
-
-## 6. Working with Helm Repositories
-
-Before installing an application, we need to add the repository that contains its Helm chart.
-
-In this practical, we use the Bitnami repository.
-
-### Step 1: Add the Bitnami repository
-
-```bash
-helm repo add bitnami https://charts.bitnami.com/bitnami
-```
+For example, imagine I install the NGINX chart and give it the release name `nginx-v1`.
 
 Here:
 
-- `helm repo add` adds a new Helm repository.
-- `bitnami` is the name we give to the repository.
-- The URL points to the repository.
-
-### Step 2: List available repositories
-
-```bash
-helm repo list
-```
-
-### Step 3: Update repository information
-
-```bash
-helm repo update
-```
-
-This refreshes the information about the charts available in the repositories.
-
-### Step 4: Search for charts
-
-To search for charts available in the Bitnami repository:
-
-```bash
-helm search repo bitnami
-```
-
-To search for NGINX:
-
-```bash
-helm search repo bitnami/nginx
-```
-
-To search for Prometheus:
-
-```bash
-helm search repo bitnami/prometheus
-```
-
-The search command helps us find whether a particular chart is available in the repository.
-
-## 7. Installing Applications Using Helm
-
-Now that the repository is added, we can install applications using Helm.
-
-### 7.1 Install NGINX
-
-```bash
-helm install nginx-v1 bitnami/nginx
-```
-
-Here:
-
-- `helm install` installs a chart.
 - `nginx-v1` is the release name.
-- `bitnami/nginx` is the repository and chart name.
+- NGINX is the chart.
+- Bitnami is the repository.
 
-Check the deployed resources:
+The release name helps us identify a particular installation.
 
-```bash
-kubectl get pods
-```
+We can install the same chart multiple times using different release names.
 
-Check Helm releases:
+We also use the release name when managing or uninstalling that particular installation.
 
-```bash
-helm list
-```
+### Understanding the relationship
 
-### 7.2 Install Prometheus
+| Component | Meaning | Example |
+|---|---|---|
+| Repository | Stores Helm charts | Bitnami |
+| Chart | Package of an application | NGINX |
+| Release | Installed instance of a chart | nginx-v1 |
 
-First, search for the chart:
+## 6. Installing Applications from Different Repositories
 
-```bash
-helm search repo bitnami/prometheus
-```
+Not every Kubernetes application or controller is available in the Bitnami repository.
 
-Install it:
+For example, my teacher discussed the AWS Load Balancer Controller.
 
-```bash
-helm install prometheus bitnami/prometheus
-```
+If a chart is not available in the repository we are currently using, we need to find the repository maintained by the organization responsible for that application.
 
-Check the pods:
-
-```bash
-kubectl get pods
-```
-
-Check the releases:
-
-```bash
-helm list
-```
-
-Depending on the chart configuration, the installation may create multiple Kubernetes resources.
-
-## 8. Installing Charts from Other Repositories
-
-Not every chart is available in the Bitnami repository.
-
-For example, if I want to install an application or controller that is maintained by another organization, I need to add the repository provided by that organization.
-
-The teacher demonstrated this using the AWS Load Balancer Controller.
+For example, AWS provides its own Helm repository for the AWS Load Balancer Controller.
 
 The general process is:
 
-1. Open the official documentation for the application.
-2. Find its Helm installation instructions.
-3. Add the repository mentioned in the documentation.
-4. Update the repository.
-5. Search for the required chart.
-6. Install it using Helm.
+1. Find the official documentation for the application.
+2. Identify the Helm repository provided by its maintainers.
+3. Add that repository.
+4. Find the required chart.
+5. Install the chart with the required configuration.
 
-The commands depend on the application and its official documentation.
+Some charts also have additional prerequisites and configuration requirements.
 
-**Important:** Some charts have prerequisites and require additional configuration values. Running `helm install` without those values may not be enough.
+Therefore, we should always refer to the official documentation before installing third-party controllers.
 
-## 9. Uninstalling Applications Using Helm
+## 7. Creating Our Own Helm Charts
 
-We can uninstall an application using its release name.
+Apart from installing third-party applications, Helm also allows us to package our organization's applications as Helm charts.
 
-First, list the installed releases:
+This is especially useful when working with microservices.
 
-```bash
-helm list
-```
+My teacher explained this using an example of an e-commerce organization called Best Commerce.
 
-Uninstall NGINX:
-
-```bash
-helm uninstall nginx-v1
-```
-
-Uninstall Prometheus:
-
-```bash
-helm uninstall prometheus
-```
-
-Verify:
-
-```bash
-helm list
-kubectl get pods
-```
-
-We need to provide the release name, not the chart name.
-
-## 10. Creating Our Own Helm Charts
-
-This is an important part of the session.
-
-As a DevOps engineer, I may need to package my organization's microservices as Helm charts so that other teams can deploy them easily.
-
-The teacher explained this using an e-commerce application.
-
-Imagine I am working in an e-commerce company called **Best Commerce**.
-
-The company has two microservices:
+Imagine the organization has two microservices:
 
 1. Payments
 2. Shipping
 
-My task is to create a Helm chart for each microservice.
+As a DevOps engineer, I am responsible for deploying these microservices in Kubernetes.
 
-For this demonstration, the teacher used the BusyBox Docker image instead of a complete application source code.
+Instead of maintaining separate deployment instructions for every team, I can create a Helm chart for each microservice.
 
-The purpose was to understand how Helm charts work.
+For example:
 
-### Step 1: Create the project directory
+- Payments Helm chart
+- Shipping Helm chart
 
-```bash
-mkdir -p best-commerce
-cd best-commerce
-```
+I can then package both charts and publish them to a common Helm repository.
 
-### Step 2: Create the Payments chart
+Other teams can add that repository and install the charts whenever they need them.
 
-```bash
-helm create payments
-```
+This makes application deployment easier and more consistent across teams.
 
-### Step 3: Create the Shipping chart
+## 8. Structure of a Helm Chart
 
-```bash
-helm create shipping
-```
+When we create a Helm chart, Helm provides a predefined folder structure.
 
-Check the directory structure:
-
-```bash
-ls
-```
-
-We should now have:
-
-```text
-best-commerce/
-├── payments/
-└── shipping/
-```
-
-Helm automatically creates the required chart structure when we use `helm create`.
-
-## 11. Understanding the Helm Chart Structure
-
-Inside each chart, Helm creates some important files and directories.
-
-Example:
+The important files and directories are:
 
 ```text
 payments/
@@ -386,486 +287,185 @@ payments/
 └── templates/
 ```
 
-### 11.1 Chart.yaml
+Let's understand each one.
 
-This file contains metadata about the Helm chart.
+### 8.1 Chart.yaml
 
-It can contain:
+`Chart.yaml` contains metadata about the Helm chart.
 
-- Chart name
-- Chart version
-- Application version
-- Description
-- Chart type
+It provides information such as:
 
-Example:
+- Name of the chart.
+- Chart version.
+- Application version.
+- Description.
+- Chart type.
 
-```yaml
-apiVersion: v2
-name: payments
-description: Helm chart for payments service
-type: application
-version: 0.1.0
-appVersion: "1.0.0"
-```
+For example, if we create a Payments chart, its metadata identifies the chart as Payments and specifies its version.
 
-### 11.2 values.yaml
+It helps Helm understand information about the chart.
 
-This file contains the default configuration values used by the templates.
+### 8.2 values.yaml
 
-For example, we can define:
+`values.yaml` contains the configuration values used by the templates.
 
-```yaml
-replicaCount: 2
+Instead of hardcoding every configuration inside Kubernetes YAML files, we can define values separately.
 
-image:
-  repository: busybox
-  tag: latest
-  pullPolicy: IfNotPresent
+For example, we may define:
 
-appMessage: "I am a payment service"
-```
+- Number of replicas.
+- Container image repository.
+- Container image tag.
+- Image pull policy.
+- Resource configurations.
+- Application-specific settings.
 
-Instead of hardcoding these values in every Kubernetes YAML file, we can define them in `values.yaml`.
+The main purpose of `values.yaml` is to make the chart customizable.
 
-We can change these values depending on the environment.
+### 8.3 templates Directory
+
+The `templates` directory contains the Kubernetes YAML templates required to deploy the application.
 
 For example:
 
-- UAT environment may need 2 replicas.
-- Production environment may need 3 replicas.
+- Deployment
+- Service
+- ServiceAccount
+- ConfigMap
 
-### 11.3 templates Directory
+We can place the required Kubernetes resource templates inside this directory.
 
-The `templates` directory contains Kubernetes YAML templates.
+Helm processes these templates and replaces the variables with the values provided in `values.yaml`.
 
-For example:
+### 8.4 charts Directory
 
-```text
-templates/
-├── deployment.yaml
-├── service.yaml
-└── serviceaccount.yaml
-```
+The `charts` directory is used for managing chart dependencies.
 
-We can place the Kubernetes resources required by our application inside this directory.
+For example, an application may depend on another application or component.
 
-Helm processes these templates and replaces the variables with values from `values.yaml`.
+We can use chart dependencies to manage such requirements.
 
-### 11.4 charts Directory
+For the basic Payments and Shipping demonstration, my teacher explained that we could ignore this directory.
 
-This directory is used for chart dependencies.
-
-For example, if our application depends on another chart, we can manage that dependency here.
-
-For our basic demonstration, we do not need to modify this directory.
-
-## 12. Understanding Templates and Values
+## 9. Understanding Templates and Values
 
 This is one of the most important concepts in Helm.
 
-**Templates** contain the Kubernetes resource definitions.
+**Templates define how Kubernetes resources should be created. Values provide the configuration used by those templates.**
 
-**Values** provide the configuration that is inserted into those templates.
+Let's understand with an example.
 
-For example, consider this Deployment template:
+Imagine we have a Payments microservice.
 
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{ .Release.Name }}-deployment
-spec:
-  replicas: {{ .Values.replicaCount }}
-  selector:
-    matchLabels:
-      app: payments
-  template:
-    metadata:
-      labels:
-        app: payments
-    spec:
-      containers:
-        - name: payments
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          command: ["/bin/sh", "-c"]
-          args:
-            - "echo {{ .Values.appMessage }}; sleep 3600"
-```
+In the Deployment template, we may need to define:
 
-In this template:
+- Deployment name.
+- Number of replicas.
+- Container image.
+- Container image tag.
 
-- `{{ .Release.Name }}` gets the release name.
-- `{{ .Values.replicaCount }}` gets the replica count from `values.yaml`.
-- `{{ .Values.image.repository }}` gets the image repository.
-- `{{ .Values.image.tag }}` gets the image tag.
-- `{{ .Values.appMessage }}` gets the application message.
+Instead of hardcoding all these values, we can use variables.
 
-For example, if `values.yaml` contains:
+For example, the template can refer to the replica count using a value from `values.yaml`.
 
-```yaml
-replicaCount: 2
+If the values file contains two replicas, Helm uses that value while generating the Deployment.
 
-image:
-  repository: busybox
-  tag: latest
+If we change the value to three replicas, the same template can be reused with three replicas.
 
-appMessage: "I am a payment service"
-```
-
-Helm uses these values while generating the final Kubernetes YAML resources.
-
-This makes our chart reusable and customizable.
-
-## 13. Creating the Payments Chart
-
-Move into the Payments chart:
-
-```bash
-cd payments
-```
-
-Open the templates directory:
-
-```bash
-cd templates
-```
-
-We can remove the default example Deployment template and create our own.
-
-Create or edit:
-
-```bash
-vim deployment.yaml
-```
-
-Add the Deployment template shown in the previous section.
-
-Now move back to the Payments chart directory:
-
-```bash
-cd ..
-```
-
-Open the values file:
-
-```bash
-vim values.yaml
-```
-
-Use:
-
-```yaml
-replicaCount: 2
-
-image:
-  repository: busybox
-  tag: latest
-  pullPolicy: IfNotPresent
-
-appMessage: "I am a payment service"
-```
-
-Check `Chart.yaml` and update the application version:
-
-```yaml
-appVersion: "1.0.0"
-```
-
-Now the Payments chart has its template and configuration values.
-
-## 14. Creating the Shipping Chart
-
-Move back to the main project directory:
-
-```bash
-cd ..
-```
-
-Open the Shipping chart:
-
-```bash
-cd shipping
-```
-
-Open its templates directory:
-
-```bash
-cd templates
-```
-
-Create or update:
-
-```bash
-vim deployment.yaml
-```
-
-Use the same Deployment template structure, but use the Shipping label and message.
+This is useful when deploying applications in different environments.
 
 For example:
 
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{ .Release.Name }}-deployment
-spec:
-  replicas: {{ .Values.replicaCount }}
-  selector:
-    matchLabels:
-      app: shipping
-  template:
-    metadata:
-      labels:
-        app: shipping
-    spec:
-      containers:
-        - name: shipping
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          command: ["/bin/sh", "-c"]
-          args:
-            - "echo {{ .Values.appMessage }}; sleep 3600"
-```
+| Configuration | UAT | Production |
+|---|---:|---:|
+| Replicas | 2 | 3 |
+| Application | Payments | Payments |
 
-Move back to the Shipping chart directory:
+The same chart can be customized for both environments.
 
-```bash
-cd ..
-```
+We do not need to maintain completely separate Deployment templates for every environment.
 
-Update `values.yaml`:
+### Why are templates and values important?
 
-```yaml
-replicaCount: 2
+- Templates make Kubernetes resource definitions reusable.
+- Values allow us to customize the configuration.
+- The same chart can be used in multiple environments.
+- We can avoid hardcoding configuration values in every template.
 
-image:
-  repository: busybox
-  tag: latest
-  pullPolicy: IfNotPresent
+## 10. Packaging Helm Charts
 
-appMessage: "I am a shipping service"
-```
+After creating our own Helm charts, we can package them into chart archive files.
 
-Update the application version in `Chart.yaml`:
+For example, if we have Payments and Shipping charts, we can package them separately.
 
-```yaml
-appVersion: "1.0.0"
-```
+The packaged files can then be shared with other teams.
 
-Now both microservices have their own Helm charts.
+The package contains the chart files and is commonly generated as a `.tgz` archive.
 
-## 15. Packaging Helm Charts
+This makes it easier to distribute and use our charts.
 
-After creating our charts, we need to package them.
+## 11. Creating Our Own Helm Repository
 
-A Helm chart can be packaged into a `.tgz` archive.
+After packaging our charts, we can make them available through a common Helm repository.
 
-First, return to the main project directory:
-
-```bash
-cd ..
-```
-
-Package the Shipping chart:
-
-```bash
-helm package shipping
-```
-
-Package the Payments chart:
-
-```bash
-helm package payments
-```
-
-Check the files:
-
-```bash
-ls -l
-```
-
-We should see files similar to:
-
-```text
-payments-0.1.0.tgz
-shipping-0.1.0.tgz
-```
-
-These are the packaged Helm charts.
-
-## 16. Creating Our Own Helm Repository
-
-Now we have two packaged charts:
+For example, Best Commerce may have the following charts:
 
 - Payments
 - Shipping
 
-We want to make them available through a common Helm repository.
+We can publish both charts to a centralized location.
 
-The teacher used the `helm repo index` command.
+The repository also contains an `index.yaml` file that provides information about the charts available in it.
 
-Run:
+Other teams can add this repository to their Helm configuration and search for the available charts.
 
-```bash
-helm repo index .
-```
-
-This generates an `index.yaml` file.
-
-Check the file:
-
-```bash
-ls -l
-```
-
-The directory should contain:
-
-```text
-best-commerce/
-├── payments/
-├── shipping/
-├── payments-0.1.0.tgz
-├── shipping-0.1.0.tgz
-└── index.yaml
-```
-
-The `index.yaml` file contains information about the charts available in the repository.
-
-We can publish the packaged charts and the index file to a location accessible to other teams.
-
-For example, an organization may use:
+My teacher mentioned that organizations can use centralized storage solutions such as:
 
 - Nexus Repository
 - JFrog Artifactory
 - GitHub Pages
-- Another HTTP-accessible chart repository
 
-Other teams can then add that repository and install the charts.
+This allows teams inside or outside the organization to access and install the charts.
 
-## 17. Customizing Helm Values During Installation
+## 12. Customizing Helm Charts
 
-Sometimes we want to change chart configurations while installing an application.
+Helm charts often provide configurable values.
 
-Helm supports the `--set` option for this.
+When installing a chart, we may want to change some of these values according to our requirements.
 
-For example:
+For example, we may want to change:
 
-```bash
-helm install payments-release ./payments \
-  --set replicaCount=3
-```
+- Number of replicas.
+- Container image.
+- Application configuration.
+- Other deployment settings.
 
-This installs the local Payments chart with three replicas.
+Helm supports customization through values provided by the chart.
 
-We can also inspect the default values provided by a chart:
+We can inspect the available default values of a chart to understand which settings can be customized.
 
-```bash
-helm show values bitnami/nginx
-```
+This is especially useful when installing the same application in multiple environments.
 
-This displays the chart's configurable values.
+For example, the UAT environment may require two replicas, while the production environment may require three replicas.
 
-We can use this information to understand which configurations can be customized during installation.
+We can use the same chart with different configuration values.
 
-## 18. Important Helm Commands – Quick Revision
+## 13. Final Understanding
 
-| Command | Purpose |
-|---|---|
-| `helm version` | Check Helm version |
-| `helm repo add` | Add a repository |
-| `helm repo list` | List repositories |
-| `helm repo update` | Update repository information |
-| `helm search repo` | Search for charts |
-| `helm install` | Install a chart |
-| `helm list` | List installed releases |
-| `helm uninstall` | Uninstall a release |
-| `helm create` | Create a new chart |
-| `helm package` | Package a chart |
-| `helm repo index` | Generate repository index |
-| `helm show values` | Display chart configuration values |
+Before learning Helm, I understood that Kubernetes applications could be deployed using YAML files and `kubectl`.
 
-## 19. What I Learned
+However, when applications require multiple resources and different configurations, manually maintaining all those files becomes difficult.
 
-In this session, I learned:
+Helm makes this process easier by packaging Kubernetes resources into reusable charts.
 
-1. Helm is a package manager for Kubernetes.
-2. Why Helm is useful for managing multiple Kubernetes applications.
-3. The difference between a repository, chart and release.
-4. How to install Helm on a machine.
-5. How Helm uses the current Kubernetes context.
-6. How to add and update Helm repositories.
-7. How to search for charts in a repository.
-8. How to install and uninstall applications using Helm.
-9. How to create our own Helm charts using `helm create`.
-10. The purpose of `Chart.yaml`, `values.yaml` and the `templates` directory.
-11. How to package Helm charts.
-12. How to generate an `index.yaml` file for our own Helm repository.
-13. How to customize chart configurations using `--set`.
+I learned that:
 
-## 20. Interview Questions
+- A repository stores Helm charts.
+- A chart is a package containing application deployment templates and configuration.
+- A release is an installed instance of a chart.
+- `Chart.yaml` contains chart metadata.
+- `values.yaml` contains configuration values.
+- The `templates` directory contains Kubernetes resource templates.
+- We can package our own charts and share them through a Helm repository.
 
-**1. What is Helm?**
-
-Helm is a package manager for Kubernetes. It helps us install, upgrade, uninstall and manage applications using Helm charts.
-
-**2. Why do we use Helm?**
-
-We use Helm to simplify Kubernetes application deployment and configuration management. It avoids manually maintaining multiple YAML files for every application.
-
-**3. What is a Helm chart?**
-
-A Helm chart is a package containing templates and configuration files required to deploy an application in Kubernetes.
-
-**4. What is a Helm repository?**
-
-A Helm repository is a location where Helm charts are stored and shared.
-
-**5. What is a Helm release?**
-
-A release is an installed instance of a Helm chart.
-
-**6. What is the difference between Chart.yaml and values.yaml?**
-
-`Chart.yaml` contains metadata about the chart, whereas `values.yaml` contains default configuration values used by the templates.
-
-**7. What is the purpose of the templates directory?**
-
-It contains Kubernetes YAML templates such as Deployment, Service and ConfigMap definitions.
-
-**8. Does Helm 3 require Tiller inside the Kubernetes cluster?**
-
-No. Helm 3 does not require Tiller. It communicates with the Kubernetes API using the configured Kubernetes context.
-
-**9. How do you uninstall an application installed through Helm?**
-
-```bash
-helm uninstall <release-name>
-```
-
-**10. How do you create a Helm chart?**
-
-```bash
-helm create <chart-name>
-```
-
-## 21. References
-
-I used the following resources while learning and documenting this topic:
-
-- Teacher: Abhishek Veeramalla – Helm session.
-- Official Helm documentation: https://helm.sh/docs/
-- Helm installation guide: https://helm.sh/docs/intro/install/
-- Helm chart documentation: https://helm.sh/docs/topics/charts/
-- Helm command reference: https://helm.sh/docs/helm/
-
----
-
-## Final Understanding
-
-Before learning Helm, I was creating and managing Kubernetes YAML files manually to deploy applications.
-
-Now I understand that Helm makes this process easier by packaging Kubernetes resources into reusable charts.
-
-I can use existing repositories to install third-party applications such as Prometheus and NGINX. I can also create my own charts for microservices such as Payments and Shipping, package them and share them through a Helm repository.
-
-**My main takeaway:** Helm helps DevOps engineers manage Kubernetes application deployments in a simpler, reusable and organized way.
+**My main takeaway:** Helm helps DevOps engineers simplify Kubernetes application deployment, manage application versions and reuse deployment configurations across different environments.
