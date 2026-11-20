@@ -1,10 +1,7 @@
-Kubernetes – Startup Probes & Readiness Probes
 
-DevOps / Kubernetes Interview Preparation
+# Kubernetes – Startup Probes & Readiness Probes
 
-PART 1: UNDERSTANDING KUBERNETES PROBES
-
-1. What are Probes in Kubernetes?
+## 1. What are Probes in Kubernetes?
 
 Probes are health checks performed by Kubernetes to understand the condition of containers running inside Pods.
 
@@ -12,30 +9,21 @@ In simple words, probes help Kubernetes determine whether an application has sta
 
 Kubernetes provides three main types of probes:
 
-1. Startup Probe
-2. Readiness Probe
-3. Liveness Probe
-
-Types of Kubernetes Probes
-
-Probe| Purpose
-Startup Probe| Checks whether the application has started successfully.
-Readiness Probe| Checks whether the application is ready to receive traffic.
-Liveness Probe| Checks whether the application is still healthy and should continue running.
+1. **Startup Probe** – Checks whether the application has started successfully.
+2. **Readiness Probe** – Checks whether the application is ready to receive traffic.
+3. **Liveness Probe** – Checks whether the application is still healthy and should continue running.
 
 ---
 
-PART 2: STARTUP PROBE
+# PART 1: STARTUP PROBE
 
-2. What is a Startup Probe?
+## 2. What is a Startup Probe?
 
 A Startup Probe is a Kubernetes health check that determines whether an application inside a container has successfully started.
 
-In simple words:
+**In simple words: Startup Probe checks whether your application has finished starting.**
 
-Startup Probe checks whether your application has finished starting.
-
-Why Do We Need Startup Probes?
+### Why Do We Need Startup Probes?
 
 Imagine you have a Java Spring Boot application running inside a Kubernetes Pod.
 
@@ -52,12 +40,11 @@ Without a Startup Probe, Kubernetes could perform liveness checks before the app
 
 Startup Probes help prevent this.
 
-Real-World Example
+### Real-World Example
 
 Imagine you switch on your laptop.
 
 Your laptop needs some time to:
-
 - Boot the operating system.
 - Load background services.
 - Initialize applications.
@@ -68,7 +55,7 @@ Similarly, a containerized application may need time to start.
 
 Startup Probe gives the application time to complete its startup process.
 
-3. How Does Startup Probe Work?
+## 3. How Does Startup Probe Work?
 
 1. Kubernetes starts the container.
 2. Startup Probe begins checking the application.
@@ -76,23 +63,21 @@ Startup Probe gives the application time to complete its startup process.
 4. Once the probe succeeds, startup checking stops.
 5. Kubernetes then allows the configured readiness and liveness probes to take over.
 
-Important: While a Startup Probe has not succeeded, Kubernetes does not run the configured readiness and liveness probes.
+**Important:** While a Startup Probe has not succeeded, Kubernetes does not run the configured readiness and liveness probes.
 
 If the Startup Probe fails the configured number of consecutive times, Kubernetes restarts the container.
 
 ---
 
-PART 3: READINESS PROBE
+# PART 2: READINESS PROBE
 
-4. What is a Readiness Probe?
+## 4. What is a Readiness Probe?
 
 A Readiness Probe is a Kubernetes health check that determines whether an application is ready to receive incoming traffic.
 
-In simple words:
+**In simple words: Readiness Probe checks whether your application is ready to serve users.**
 
-Readiness Probe checks whether your application is ready to serve users.
-
-Why Do We Need Readiness Probes?
+### Why Do We Need Readiness Probes?
 
 Imagine you deployed an application inside a Kubernetes Pod.
 
@@ -109,7 +94,7 @@ If Kubernetes sends traffic to that Pod immediately, users may experience errors
 
 Readiness Probe prevents this.
 
-Real-World Example
+### Real-World Example
 
 Imagine you visit a restaurant.
 
@@ -121,7 +106,7 @@ Once the kitchen is ready, the restaurant starts accepting orders.
 
 Similarly, Readiness Probe ensures that an application receives traffic only when it is ready.
 
-5. How Does Readiness Probe Work?
+## 5. How Does Readiness Probe Work?
 
 1. Kubernetes starts the container.
 2. Readiness Probe checks the application.
@@ -131,32 +116,36 @@ Similarly, Readiness Probe ensures that an application receives traffic only whe
 6. Once the application becomes ready, the probe succeeds.
 7. The Pod becomes Ready and can receive traffic.
 
-Important: A Readiness Probe failure does not restart the container.
+**Important:** A Readiness Probe failure does not restart the container.
 
 It only prevents the Pod from receiving traffic through its Kubernetes Service.
 
 ---
 
-PART 4: DIFFERENCE BETWEEN STARTUP AND READINESS PROBES
+# PART 3: DIFFERENCE BETWEEN STARTUP AND READINESS PROBES
 
-Startup Probe| Readiness Probe
-Checks whether the application has started.| Checks whether the application is ready to receive traffic.
-Used during application startup.| Used throughout the container's lifecycle after startup succeeds.
-Protects slow-starting applications.| Prevents traffic from reaching unready applications.
-Runs until it succeeds or reaches its failure threshold.| Continues checking periodically.
-Failure beyond the configured threshold causes a container restart.| Failure removes the Pod from ready Service endpoints.
+## 6. Startup Probe vs Readiness Probe
 
-Easy Way to Remember
+| Startup Probe | Readiness Probe |
+|---|---|
+| Checks whether the application has started. | Checks whether the application is ready to receive traffic. |
+| Used during application startup. | Used throughout the container's lifecycle after startup succeeds. |
+| Protects slow-starting applications. | Prevents traffic from reaching unready applications. |
+| Runs until it succeeds or reaches its failure threshold. | Continues checking periodically. |
+| Failure beyond the configured threshold causes a container restart. | Failure removes the Pod from ready Service endpoints. |
 
-- Startup Probe = Has the application started?
-- Readiness Probe = Can the application handle traffic?
+### Easy Way to Remember
+
+- **Startup Probe:** Has the application started?
+- **Readiness Probe:** Can the application handle traffic?
 
 ---
 
-PART 5: PRACTICAL KUBERNETES YAML CONFIGURATION
+# PART 4: PRACTICAL KUBERNETES YAML CONFIGURATION
 
-6. Startup Probe Example
+## 7. Startup Probe Example
 
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 
@@ -191,22 +180,25 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 5
             failureThreshold: 30
+```
 
-Explanation
+### Explanation
 
-Parameter| Meaning
-startupProbe| Configures the Startup Probe.
-httpGet| Performs an HTTP health check.
-path: /| Checks the application's root endpoint.
-port: 80| Sends the health check to port 80.
-initialDelaySeconds: 10| Waits 10 seconds before the first check.
-periodSeconds: 5| Performs a check every 5 seconds.
-failureThreshold: 30| Allows 30 consecutive failures before restarting the container.
+| Parameter | Meaning |
+|---|---|
+| startupProbe | Configures the Startup Probe. |
+| httpGet | Performs an HTTP health check. |
+| path: / | Checks the application's root endpoint. |
+| port: 80 | Sends the health check to port 80. |
+| initialDelaySeconds: 10 | Waits 10 seconds before the first check. |
+| periodSeconds: 5 | Performs a check every 5 seconds. |
+| failureThreshold: 30 | Allows 30 consecutive failures before restarting the container. |
 
 In this example, the Startup Probe can allow approximately 150 seconds of failed checks after the initial delay before Kubernetes restarts the container.
 
-7. Readiness Probe Example
+## 8. Readiness Probe Example
 
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 
@@ -241,152 +233,161 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 5
             failureThreshold: 3
+```
 
-Explanation
+### Explanation
 
-Parameter| Meaning
-readinessProbe| Configures the Readiness Probe.
-httpGet| Performs an HTTP health check.
-path: /| Checks the root endpoint.
-port: 80| Checks port 80.
-initialDelaySeconds: 5| Waits 5 seconds before the first check.
-periodSeconds: 5| Checks every 5 seconds.
-failureThreshold: 3| Marks the container unready after 3 consecutive failures.
+| Parameter | Meaning |
+|---|---|
+| readinessProbe | Configures the Readiness Probe. |
+| httpGet | Performs an HTTP health check. |
+| path: / | Checks the root endpoint. |
+| port: 80 | Checks port 80. |
+| initialDelaySeconds: 5 | Waits 5 seconds before the first check. |
+| periodSeconds: 5 | Checks every 5 seconds. |
+| failureThreshold: 3 | Marks the container unready after 3 consecutive failures. |
 
 When the Readiness Probe fails, Kubernetes removes the Pod from the ready Service endpoints.
 
 It does not restart the container.
 
-Note: These examples use Nginx, which serves HTTP on port 80. For a real application, use an appropriate health-check endpoint provided by that application.
+**Note:** These examples use Nginx, which serves HTTP on port 80. For a real application, use an appropriate health-check endpoint provided by that application.
 
 ---
 
-PART 6: IMPORTANT PROBE CONFIGURATION PARAMETERS
+# PART 5: IMPORTANT PROBE CONFIGURATION PARAMETERS
 
-Parameter| Explanation
-initialDelaySeconds| Time to wait before the first probe.
-periodSeconds| How frequently the probe runs.
-timeoutSeconds| Maximum time allowed for a probe to respond.
-successThreshold| Number of consecutive successes required to consider the probe successful.
-failureThreshold| Number of consecutive failures required before the probe is considered failed.
+## 9. Probe Configuration Parameters
 
-Important: For Startup and Liveness Probes, successThreshold must be 1.
+| Parameter | Explanation |
+|---|---|
+| initialDelaySeconds | Time to wait before the first probe. |
+| periodSeconds | How frequently the probe runs. |
+| timeoutSeconds | Maximum time allowed for a probe to respond. |
+| successThreshold | Number of consecutive successes required to consider the probe successful. |
+| failureThreshold | Number of consecutive failures required before the probe is considered failed. |
+
+**Important:** For Startup and Liveness Probes, successThreshold must be 1.
 
 ---
 
-PART 7: TYPES OF PROBE CHECKS
+# PART 6: TYPES OF PROBE CHECKS
 
-Kubernetes supports three main methods to perform health checks.
-
-1. HTTP GET
+## 10. HTTP GET
 
 Checks whether an application responds to an HTTP request.
 
 Example:
 
+```yaml
 httpGet:
   path: /health
   port: 8080
+```
 
 Used when applications expose HTTP health endpoints.
 
-2. TCP Socket
+## 11. TCP Socket
 
 Checks whether a particular port is accepting TCP connections.
 
 Example:
 
+```yaml
 tcpSocket:
   port: 8080
+```
 
 Used to check whether a service is listening on a specific port.
 
-3. Exec Command
+## 12. Exec Command
 
 Executes a command inside the container to check application health.
 
 Example:
 
+```yaml
 exec:
   command:
     - cat
     - /tmp/healthy
+```
 
 If the command exits with status code 0, the probe succeeds.
 
 ---
 
-PART 8: INTERVIEW QUESTIONS AND ANSWERS
+# PART 7: INTERVIEW QUESTIONS AND ANSWERS
 
-Q1. What are Probes in Kubernetes?
+## Q1. What are Probes in Kubernetes?
 
-Answer:
+**Answer:**
 
 Probes are health checks performed by Kubernetes to monitor containers and determine whether applications have started, are ready to receive traffic or are still healthy.
 
-Q2. What is a Startup Probe?
+## Q2. What is a Startup Probe?
 
-Answer:
+**Answer:**
 
 A Startup Probe checks whether an application inside a container has successfully started. It is especially useful for slow-starting applications such as Java and Spring Boot applications.
 
-Q3. What is a Readiness Probe?
+## Q3. What is a Readiness Probe?
 
-Answer:
+**Answer:**
 
 A Readiness Probe checks whether an application is ready to receive incoming traffic. If the probe fails, Kubernetes removes the Pod from the ready Service endpoints until the application becomes ready again.
 
-Q4. Why do we need a Startup Probe?
+## Q4. Why do we need a Startup Probe?
 
-Answer:
+**Answer:**
 
 Some applications take more time to start. A Startup Probe gives them sufficient time to initialize without being restarted by liveness checks before startup is complete.
 
-Q5. Why do we need a Readiness Probe?
+## Q5. Why do we need a Readiness Probe?
 
-Answer:
+**Answer:**
 
 A Readiness Probe prevents traffic from reaching applications that are running but not ready to handle requests. It helps avoid failed requests during application initialization or temporary unavailability.
 
-Q6. What happens when a Startup Probe fails?
+## Q6. What happens when a Startup Probe fails?
 
-Answer:
+**Answer:**
 
 If the Startup Probe fails consecutively for the configured failureThreshold, Kubernetes restarts the container.
 
-Q7. What happens when a Readiness Probe fails?
+## Q7. What happens when a Readiness Probe fails?
 
-Answer:
+**Answer:**
 
 Kubernetes marks the Pod as NotReady and removes it from the ready Service endpoints. The container continues running and is not restarted just because the Readiness Probe failed.
 
-Q8. What is the difference between Startup Probe and Readiness Probe?
+## Q8. What is the difference between Startup Probe and Readiness Probe?
 
-Answer:
+**Answer:**
 
 A Startup Probe checks whether the application has completed its startup process, whereas a Readiness Probe checks whether the application is ready to receive traffic.
 
-Q9. Can we use Startup and Readiness Probes together?
+## Q9. Can we use Startup and Readiness Probes together?
 
-Answer:
+**Answer:**
 
 Yes. We can configure both probes in the same container. The Startup Probe checks application startup, and after it succeeds, the Readiness Probe checks whether the application is ready to receive traffic.
 
-Q10. Which applications benefit from Startup Probes?
+## Q10. Which applications benefit from Startup Probes?
 
-Answer:
+**Answer:**
 
 Applications that take a long time to initialize, such as Java, Spring Boot and other complex applications, can benefit from Startup Probes.
 
-Q11. Does a Readiness Probe restart a container?
+## Q11. Does a Readiness Probe restart a container?
 
-Answer:
+**Answer:**
 
 No. A Readiness Probe failure does not restart the container. It only marks the Pod as NotReady and removes it from ready Service endpoints.
 
-Q12. What are the different types of Kubernetes probe checks?
+## Q12. What are the different types of Kubernetes probe checks?
 
-Answer:
+**Answer:**
 
 Kubernetes supports three main probe mechanisms:
 
@@ -396,80 +397,83 @@ Kubernetes supports three main probe mechanisms:
 
 ---
 
-PART 9: SCENARIO-BASED INTERVIEW QUESTIONS AND ANSWERS
+# PART 8: SCENARIO-BASED INTERVIEW QUESTIONS AND ANSWERS
 
-Q1. Your Java application takes three minutes to start. Kubernetes keeps restarting the container before the application starts. How would you solve this?
+## Q1. Your Java application takes three minutes to start. Kubernetes keeps restarting the container before the application starts. How would you solve this?
 
-Answer:
+**Answer:**
 
 I would configure a Startup Probe with an appropriate periodSeconds and failureThreshold.
 
 This gives the application enough time to complete initialization before Kubernetes starts performing the configured liveness and readiness checks.
 
-Q2. Your Kubernetes Pod is running, but users are receiving errors when accessing the application. What could be the reason?
+## Q2. Your Kubernetes Pod is running, but users are receiving errors when accessing the application. What could be the reason?
 
-Answer:
+**Answer:**
 
 The container might be running, but the application may not be ready to handle incoming traffic.
 
 I would configure a Readiness Probe to check application health and ensure that traffic reaches the Pod only when it is ready.
 
-Q3. Your application becomes temporarily unavailable because it is connecting to a database. What would you use?
+## Q3. Your application becomes temporarily unavailable because it is connecting to a database. What would you use?
 
-Answer:
+**Answer:**
 
 I would use a Readiness Probe to temporarily mark the Pod as NotReady while the application cannot serve requests.
 
 Once the database connection is restored and the health check succeeds, Kubernetes can add the Pod back to the ready Service endpoints.
 
-Q4. Your Startup Probe fails continuously. What happens?
+## Q4. Your Startup Probe fails continuously. What happens?
 
-Answer:
+**Answer:**
 
 If the Startup Probe reaches its configured failureThreshold, Kubernetes restarts the container. I would check application logs and startup configurations to identify the reason for failure.
 
-Q5. You have three replicas of an application. One Pod becomes unready. Will the other two Pods continue receiving traffic?
+## Q5. You have three replicas of an application. One Pod becomes unready. Will the other two Pods continue receiving traffic?
 
-Answer:
+**Answer:**
 
 Yes. If the other two Pods remain ready and are correctly configured behind the same Kubernetes Service, they can continue receiving traffic while the unready Pod is excluded from ready Service endpoints.
 
 ---
 
-PART 10: QUICK REVISION
+# PART 9: QUICK REVISION
 
-Concept| Remember
-Probe| Health check for a container.
-Startup Probe| Checks whether the application has started.
-Readiness Probe| Checks whether the application can receive traffic.
-Liveness Probe| Checks whether the application should continue running.
-HTTP GET| Checks an HTTP endpoint.
-TCP Socket| Checks a TCP port.
-Exec| Executes a command inside the container.
-failureThreshold| Consecutive failures allowed before the probe is considered failed.
-periodSeconds| Frequency of health checks.
-timeoutSeconds| Maximum time allowed for a probe response.
+| Concept | Remember |
+|---|---|
+| Probe | Health check for a container. |
+| Startup Probe | Checks whether the application has started. |
+| Readiness Probe | Checks whether the application can receive traffic. |
+| Liveness Probe | Checks whether the application should continue running. |
+| HTTP GET | Checks an HTTP endpoint. |
+| TCP Socket | Checks a TCP port. |
+| Exec | Executes a command inside the container. |
+| failureThreshold | Consecutive failures allowed before the probe is considered failed. |
+| periodSeconds | Frequency of health checks. |
+| timeoutSeconds | Maximum time allowed for a probe response. |
 
-FINAL TAKEAWAY
+---
+
+# FINAL TAKEAWAY
 
 Remember these three questions:
 
-1. Startup Probe: Has my application started?
-2. Readiness Probe: Is my application ready to receive traffic?
-3. Liveness Probe: Is my application still healthy, or should Kubernetes restart it?
+1. **Startup Probe:** Has my application started?
+2. **Readiness Probe:** Is my application ready to receive traffic?
+3. **Liveness Probe:** Is my application still healthy, or should Kubernetes restart it?
 
-Easy Flow to Remember
+### Easy Flow to Remember
 
 Container Starts → Startup Probe Succeeds → Readiness Probe Checks Application → Pod Becomes Ready → Receives Traffic.
 
-Important Interview Tip:
+### Important Interview Tip
 
 Never confuse Readiness and Liveness Probes.
 
 - Readiness Probe failure stops traffic from reaching the Pod.
 - Liveness Probe failure causes Kubernetes to restart the container after the configured failure threshold.
 
-Official Documentation
+## Official Documentation
 
 Kubernetes – Configure Liveness, Readiness and Startup Probes:
 
